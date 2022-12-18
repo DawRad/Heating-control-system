@@ -10,14 +10,12 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 //Constants:
 const int pResistor = A0; //pin A0 to read analog input
-
-// const int ledBtn = 4;
-// const int btnPin = 2;
+const int btnPin = 2;
 
 // //Variables:
 int value; //save analog value
-// boolean ledOn;
-// int btnVal;
+boolean room_state;
+int btnVal;
 
 void setup(){
   // initialize the LCD
@@ -29,22 +27,29 @@ void setup(){
 
   //Input or output?
   pinMode(pResistor, INPUT); //Optional
-  // pinMode(ledBtn,OUTPUT);
-  // pinMode(btnPin,INPUT_PULLUP);
+  pinMode(btnPin,INPUT_PULLUP);
   Serial.begin(9600);
 
-  // ledOn = false;
+  room_state = false;
 }
 
 void loop(){
   value = analogRead(pResistor);          //Read and save analog value from photoresistor
   Serial.println(value);
 
+  btnVal = digitalRead(btnPin);
+  if(btnVal==LOW)
+  {
+    if(room_state)  room_state = false;
+    else room_state = true;
+  }
+
   lcd.clear();
-  lcd.print("Light lvl:");
-  lcd.setCursor (0,1); // go to start of 2nd line
+  lcd.print("Light lvl: ");
   lcd.print(value);
-  //lcd.print(millis() / 1000);
+  lcd.setCursor (0,1); // go to start of 2nd line
+  lcd.print("Room: ");
+  if(room_state)  lcd.print("occupied");
+  else lcd.print("empty");  
   delay(500);
-  //end of loopcode Robojax code for LCD with I2C
 }
