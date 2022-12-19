@@ -14,12 +14,16 @@ const int pResistor = A0; //pin A0 to read analog input
 const int btnPin = 2;
 const int tempPin = A2;
 
+const int lightThresh = 350;  // threshold of light measurment
+const float tempThresh = 25.0;  
+
 // //Variables:
 int value; //save analog value
 boolean room_state;
 int btnVal;
 float actTemp;
-float tempAvg;
+int tempCnt;
+// float tempAvg;
 String strRoomState;
 
 void setup(){
@@ -38,20 +42,26 @@ void setup(){
 
   room_state = false;
   actTemp = 0;
-  tempAvg = 0;
+  tempCnt = 0;
+  // tempAvg = 0;
   strRoomState = "empty";
+
+  randomSeed(analogRead(0));
+  float tempInt = random(18,22);
+  float tempDec = random(9) / 10.0;
+  actTemp = tempInt + tempDec;
 }
 
 void loop()
 {
-  tempAvg = 0;
-  for (int i = 0; i < 60; i++)
+  if(tempCnt == 5)
   {
-    actTemp = ((analogRead(tempPin) * 5.0) / 1024) * 10;
-    tempAvg += actTemp;
-    delay(50);
+    float tempInt = random(18,22);
+    float tempDec = random(9) / 10.0;
+    actTemp = tempInt + tempDec;
+    tempCnt = 0;
   }
-  tempAvg = tempAvg / 60;
+  tempCnt++;
 
   value = analogRead(pResistor);          //Read and save analog value from photoresistor
   Serial.println(value);
@@ -71,18 +81,43 @@ void loop()
   if(room_state)  strRoomState = "occupied";
   else strRoomState = "empty";  
   lcd.print(strRoomState);
-  delay(1500);
+  delay(1000);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Room: ");
   lcd.print(strRoomState);
   lcd.setCursor(0, 1);
   lcd.print("Temp.: ");
-  lcd.print(tempAvg);    
-  delay(1500);
+  lcd.print(actTemp);
+  lcd.print(" *C"); 
+  delay(1000);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Temp.: ");
-  lcd.print(tempAvg);
-  delay(1500);
+  lcd.print(actTemp);
+  lcd.print(" *C");
+  delay(1000);
+  lcd.clear();
+  
+  if(value <= lightThresh)
+  {
+    if(room_state)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("--> Light: On");
+    }
+    else
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("--> Light: Off");
+    }
+  }
+  else
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("--> Light: Off");
+    lcd.setCursor(0, 1);
+    lcd.print("--> Heat.: Low");
+  }
+  delay(1000);
 }
