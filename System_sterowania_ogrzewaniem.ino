@@ -12,19 +12,34 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 //Constants:
 const int pResistor = A0; //pin A0 to read analog input
 const int btnPin = 2;
+const int offBtnPin = 4;
 const int tempPin = A2;
 
 const int lightThresh = 350;  // threshold of light measurment
 const float tempThresh = 25.0;  
 
+const int P_RESIST_MAX_VAL = 1017;
+const int P_RESIST_MIN_VAL = 0;
+
+const int HEAT_LVL_MAX = 15;
+const int HEAT_LVL_MIN = 1;
+
 // //Variables:
 int value; //save analog value
 boolean room_state;
+boolean offBtnState;
 int btnVal;
+int offBtnVal;
 float actTemp;
 int tempCnt;
 // float tempAvg;
 String strRoomState;
+
+// LCD special characters
+uint8_t lvl_1[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x1F};
+uint8_t lvl_2[8] = {0x00, 0x00, 0x00, 0x00, 0x1F, 0x1F, 0x1F, 0x1F};
+uint8_t lvl_3[8] = {0x00, 0x00, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F};
+uint8_t lvl_full[8] = {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F};
 
 void setup(){
   // initialize the LCD
@@ -38,9 +53,11 @@ void setup(){
   pinMode(pResistor, INPUT); //Optional
   pinMode(tempPin, INPUT);
   pinMode(btnPin,INPUT_PULLUP);
+  pinMode(offBtnPin,INPUT_PULLUP);
   Serial.begin(9600);
 
   room_state = false;
+  offBtnState = false;
   actTemp = 0;
   tempCnt = 0;
   // tempAvg = 0;
@@ -50,6 +67,12 @@ void setup(){
   float tempInt = random(18,22);
   float tempDec = random(9) / 10.0;
   actTemp = tempInt + tempDec;
+
+  // creating characters
+  lcd.createChar(1, lvl_1);
+  lcd.createChar(2, lvl_2);
+  lcd.createChar(3, lvl_3);
+  lcd.createChar(4, lvl_full);
 }
 
 void loop()
@@ -65,12 +88,22 @@ void loop()
 
   value = analogRead(pResistor);          //Read and save analog value from photoresistor
   Serial.println(value);
-
+  // normalize value from photoresistance
+  value = constrain(value, P_RESIST_MIN_VAL, P_RESIST_MAX_VAL);
+  value = map(value, P_RESIST_MIN_VAL, P_RESIST_MAX_VAL, HEAT_LVL_MIN, HEAT_LVL_MAX);
+  
   btnVal = digitalRead(btnPin);
   if(btnVal==LOW)
   {
     if(room_state)  room_state = false;
     else room_state = true;
+  }
+
+  offBtnVal = digitalRead(offBtnPin);
+  if(offBtnVal==LOW)
+  {
+    if(offBtnState) offBtnState = false;
+    else offBtnState = true;
   }
 
   lcd.clear();
@@ -99,25 +132,50 @@ void loop()
   delay(1000);
   lcd.clear();
   
-  if(value <= lightThresh)
+  lcd.setCursor(0, 0);
+  if(offBtnState)
   {
-    if(room_state)
+    lcd.print("--> Light: Off");
+    lcd.setCursor(0, 1);
+    lcd.print("--> Heat.: ");
+    displayLevels(lcd, value);
+  }
+  else 
+  {
+      if(value <= lightThresh)
     {
-      lcd.setCursor(0, 0);
-      lcd.print("--> Light: On");
+      if(room_state)
+      {      
+        lcd.print("--> Light: On");
+      }
+      else
+      {    
+        lcd.print("--> Light: Off");
+      }
     }
     else
     {
-      lcd.setCursor(0, 0);
       lcd.print("--> Light: Off");
+      lcd.setCursor(0, 1);
+      lcd.print("--> Heat.: ");
+      displayLevels(lcd, value);
     }
   }
-  else
-  {
-    lcd.setCursor(0, 0);
-    lcd.print("--> Light: Off");
-    lcd.setCursor(0, 1);
-    lcd.print("--> Heat.: Low");
-  }
   delay(1000);
+}
+
+void displayLevels(LiquidCrystal_I2C lcd, int lvl_val)
+{
+  int full_lvls_cnt = lvl_val / 4;
+  int fractial_lvl_cnt = lvl_val % 4;
+  
+  for(int i = 0; i < full_lvls_cnt; i++)
+  {
+    lcd.write(4);
+  } 
+
+  if(fractial_lvl_cnt != 0)
+  {
+    lcd.write(fractial_lvl_cnt);
+  }
 }
